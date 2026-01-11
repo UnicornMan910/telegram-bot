@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Админ панель</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .stats { display: flex; gap: 20px; margin-bottom: 30px; }
+        .stat-card { 
+            background: #f5f5f5; 
+            padding: 20px; 
+            border-radius: 10px; 
+            min-width: 150px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>🤖 Админ панель Telegram бота</h1>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <h3>Всего заказов</h3>
+            <p>{{ stats.total_orders }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Новых заказов</h3>
+            <p>{{ stats.new_orders }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Партнёров</h3>
+            <p>{{ stats.total_partners }}</p>
+        </div>
+    </div>
+
+    <h2>Последние заказы</h2>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Клиент</th>
+            <th>Тип бота</th>
+            <th>Статус</th>
+            <th>Сумма</th>
+        </tr>
+        {% for order in orders %}
+        <tr>
+            <td>#{{ order.id }}</td>
+            <td>{{ order.user.name }} (@{{ order.user.username }})</td>
+            <td>{{ order.bot_type }}</td>
+            <td>{{ order.status }}</td>
+            <td>{{ order.amount }}{{ currency }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
