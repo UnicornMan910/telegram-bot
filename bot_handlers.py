@@ -11,7 +11,7 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime
 
-from database import init_db, User, Order, get_session
+from database import init_db, User, Order, get_session, get_or_create_user, create_order, get_user_orders
 from config import ADMIN_IDS, ADMIN_USERNAME, CURRENCY, REFERRAL_PERCENT, REFERRAL_PERCENT_PREMIUM, \
     MIN_REFERRALS_FOR_PREMIUM
 
@@ -413,3 +413,4 @@ def register_handlers(dp: Dispatcher):
         if not current_state:
 
             await message.answer("Используйте кнопки меню:", reply_markup=get_main_keyboard())
+
