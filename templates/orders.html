@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Все заказы</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border: 1px solid #ddd; }
+        .filters { background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>📋 Все заказы</h1>
+    
+    <div class="filters">
+        <form>
+            <label>Статус:</label>
+            <select name="status">
+                <option value="all" {% if current_status == 'all' %}selected{% endif %}>Все</option>
+                <option value="new" {% if current_status == 'new' %}selected{% endif %}>Новые</option>
+                <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>В работе</option>
+                <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Завершены</option>
+            </select>
+            
+            <label>Партнёр:</label>
+            <select name="partner">
+                <option value="all" {% if current_partner == 'all' %}selected{% endif %}>Все</option>
+                {% for partner in partners %}
+                <option value="{{ partner.id }}" {% if current_partner == partner.id|string %}selected{% endif %}>
+                    {{ partner.first_name }} (@{{ partner.username }})
+                </option>
+                {% endfor %}
+            </select>
+            
+            <button type="submit">Применить</button>
+        </form>
+    </div>
+
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Клиент</th>
+            <th>Тип бота</th>
+            <th>Статус</th>
+            <th>Сумма</th>
+            <th>Дата</th>
+        </tr>
+        {% for item in orders %}
+        <tr>
+            <td>#{{ item.order.id }}</td>
+            <td>
+                {% if item.user %}
+                    {{ item.user.first_name }} {{ item.user.last_name or '' }}
+                    (@{{ item.user.username or 'нет' }})
+                {% else %}
+                    Неизвестно
+                {% endif %}
+            </td>
+            <td>{{ item.order.bot_type }}</td>
+            <td>{{ item.order.status }}</td>
+            <td>{{ item.order.amount }}{{ currency }}</td>
+            <td>{{ item.order.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
