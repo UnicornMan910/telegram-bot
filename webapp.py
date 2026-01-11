@@ -159,3 +159,19 @@ def update_order_status(order_id):
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Admin panel is running'})
+
+@app.route('/api/delete_order/<int:order_id>', methods=['DELETE'])
+def delete_order(order_id):
+    session = get_db_session()
+    try:
+        order = session.query(Order).filter_by(id=order_id).first()
+        if order:
+            session.delete(order)
+            session.commit()
+            return jsonify({'success': True, 'message': 'Заказ удален'})
+        return jsonify({'success': False, 'message': 'Заказ не найден'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        session.close()
+
