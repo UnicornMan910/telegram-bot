@@ -1,11 +1,9 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-import os
 
-# Определяем DATABASE_URL
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///bot_orders.db')
+DATABASE_URL = 'sqlite:///bot_orders.db'
 
 Base = declarative_base()
 
@@ -17,22 +15,16 @@ class User(Base):
     username = Column(String(100))
     first_name = Column(String(100))
     last_name = Column(String(100))
-    referral_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    referral_id = Column(Integer, nullable=True)
     join_date = Column(DateTime, default=datetime.now)
     is_partner = Column(Boolean, default=False)
-
-    # Отношения
-    referrals = relationship('User', backref='referrer', remote_side=[id])
-    orders_as_client = relationship('Order', back_populates='user', foreign_keys='Order.user_id')
-    orders_as_partner = relationship('Order', back_populates='partner', foreign_keys='Order.partner_id')
-
 
 class Order(Base):
     __tablename__ = 'orders'
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    partner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    user_id = Column(Integer, nullable=False)
+    partner_id = Column(Integer, nullable=True)
     bot_type = Column(String(100))
     functionality = Column(Text)
     target_audience = Column(Text)
@@ -41,22 +33,14 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.now)
     partner_paid = Column(Boolean, default=False)
     partner_percent = Column(Float, default=10.0)
-    amount = Column(Float, default=100000.0)
+    amount = Column(Float, default=100.0)
 
-    user = relationship('User', back_populates='orders_as_client', foreign_keys=[user_id])
-    partner = relationship('User', back_populates='orders_as_partner', foreign_keys=[partner_id])
-    payments = relationship('PartnerPayment', back_populates='order', foreign_keys='PartnerPayment.order_id')
+# УДАЛИ КЛАСС PartnerPayment полностью если не нужен
+# class PartnerPayment(Base):
+#     __tablename__ = 'partner_payments'
+#     ...
 
 def init_db():
     engine = create_engine(DATABASE_URL, echo=False)
     Base.metadata.create_all(engine)
     return engine
-
-
-def get_session(engine):
-    Session = sessionmaker(bind=engine)
-
-    return Session()
-
-
-
