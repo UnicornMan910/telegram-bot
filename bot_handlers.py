@@ -116,7 +116,7 @@ async def cmd_help(message: Message):
 
 
 async def show_partner_program(message: Message):
-    session = get_session(engine)
+    session = get_session()
     user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
 
     if not user:
@@ -164,7 +164,7 @@ async def show_partner_program(message: Message):
 
 
 async def show_my_orders(message: Message):
-    session = get_session(engine)
+    session = get_session()
     user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
 
     if not user:
@@ -308,7 +308,7 @@ async def process_preferences(message: Message, state: FSMContext):
     await state.update_data(preferences=message.text)
     data = await state.get_data()
 
-    session = get_session(engine)
+    session = get_session()
     user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
 
     # Создаём заказ
@@ -413,5 +413,6 @@ def register_handlers(dp: Dispatcher):
         if not current_state:
 
             await message.answer("Используйте кнопки меню:", reply_markup=get_main_keyboard())
+
 
 
