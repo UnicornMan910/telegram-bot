@@ -6,8 +6,21 @@
     <style>
         body { font-family: Arial; padding: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 10px; border: 1px solid #ddd; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
         .filters { background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .delete-btn { 
+            background: #ff4444; 
+            color: white; 
+            border: none; 
+            padding: 5px 10px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+        }
+        .delete-btn:hover { background: #cc0000; }
+        .status-new { color: #2196F3; }
+        .status-in_progress { color: #FF9800; }
+        .status-completed { color: #4CAF50; }
+        .status-archived { color: #9E9E9E; }
     </style>
 </head>
 <body>
@@ -21,6 +34,7 @@
                 <option value="new" {% if current_status == 'new' %}selected{% endif %}>Новые</option>
                 <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>В работе</option>
                 <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Завершены</option>
+                <option value="archived" {% if current_status == 'archived' %}selected{% endif %}>Архив</option>
             </select>
             
             <label>Партнёр:</label>
@@ -38,31 +52,103 @@
     </div>
 
     <table>
-        <tr>
-            <th>ID</th>
-            <th>Клиент</th>
-            <th>Тип бота</th>
-            <th>Статус</th>
-            <th>Сумма</th>
-            <th>Дата</th>
-        </tr>
-        {% for item in orders %}
-        <tr>
-            <td>#{{ item.order.id }}</td>
-            <td>
-                {% if item.user %}
-                    {{ item.user.first_name }} {{ item.user.last_name or '' }}
-                    (@{{ item.user.username or 'нет' }})
-                {% else %}
-                    Неизвестно
-                {% endif %}
-            </td>
-            <td>{{ item.order.bot_type }}</td>
-            <td>{{ item.order.status }}</td>
-            <td>{{ item.order.amount }}{{ currency }}</td>
-            <td>{{ item.order.created_at }}</td>
-        </tr>
-        {% endfor %}
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Клиент</th>
+                <th>Тип бота</th>
+                <th>Статус</th>
+                <th>Сумма</th>
+                <th>Дата</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in orders %}
+            <tr>
+                <td>#{{ item.order.id }}</td>
+                <td>
+                    {% if item.user %}
+                        {{ item.user.first_name }} {{ item.user.last_name or '' }}
+                        (@{{ item.user.username or 'нет' }})
+                    {% else %}
+                        Неизвестно
+                    {% endif %}
+                </td>
+                <td>{{ item.order.bot_type }}</td>
+                <td class="status-{{ item.order.status }}">
+                    {% if item.order.status == 'new' %}🆕 Новый
+                    {% elif item.order.status == 'in_progress' %}⏳ В работе
+                    {% elif item.order.status == 'completed' %}✅ Завершен
+                    {% elif item.order.status == 'archived' %}🗄️ Архив
+                    {% else %}{{ item.order.status }}
+                    {% endif %}
+                </td>
+                <td>{{ item.order.amount }}{{ currency }}</td>
+                <td>{{ item.order.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>
+                    <button class="delete-btn" onclick="deleteOrder({{ item.order.id }})" 
+                            title="Удалить заказ">
+                        🗑️ Удалить
+                    </button>
+                    <br>
+                    <select onchange="updateStatus({{ item.order.id }}, this.value)" 
+                            style="margin-top: 5px; padding: 3px;">
+                        <option value="new" {% if item.order.status == 'new' %}selected{% endif %}>Новый</option>
+                        <option value="in_progress" {% if item.order.status == 'in_progress' %}selected{% endif %}>В работе</option>
+                        <option value="completed" {% if item.order.status == 'completed' %}selected{% endif %}>Завершен</option>
+                        <option value="archived" {% if item.order.status == 'archived' %}selected{% endif %}>В архив</option>
+                    </select>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
+
+    <script>
+    // Функция удаления заказа
+    function deleteOrder(orderId) {
+        if (confirm('❌ Удалить заказ #' + orderId + '?\nЭто действие нельзя отменить!')) {
+            fetch('/api/delete_order/' + orderId, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    location.reload(); // Перезагрузить страницу
+                } else {
+                    alert('❌ Ошибка: ' + (data.message || data.error));
+                }
+            })
+            .catch(error => {
+                alert('❌ Ошибка сети: ' + error);
+            });
+        }
+    }
+
+    // Функция обновления статуса
+    function updateStatus(orderId, newStatus) {
+        fetch('/api/update_order_status/' + orderId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Автоматически обновляем строку
+                location.reload();
+            } else {
+                alert('❌ Ошибка обновления статуса');
+            }
+        });
+    }
+    </script>
 </body>
 </html>
