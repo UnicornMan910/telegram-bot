@@ -2,10 +2,8 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, Da
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
-from config import DATABASE_URL
 
 Base = declarative_base()
-
 
 class User(Base):
     __tablename__ = 'users'
@@ -19,11 +17,10 @@ class User(Base):
     join_date = Column(DateTime, default=datetime.now)
     is_partner = Column(Boolean, default=False)
 
-    referrals = relationship('User', backref='referrer', remote_side=[id], foreign_keys=[referral_id])
+    # Отношения
+    referrals = relationship('User', backref='referrer', remote_side=[id])
     orders_as_client = relationship('Order', back_populates='user', foreign_keys='Order.user_id')
     orders_as_partner = relationship('Order', back_populates='partner', foreign_keys='Order.partner_id')
-    partner_payments = relationship('PartnerPayment', back_populates='partner',
-                                    foreign_keys='PartnerPayment.partner_id')
 
 
 class Order(Base):
@@ -70,4 +67,5 @@ def init_db():
 
 def get_session(engine):
     Session = sessionmaker(bind=engine)
+
     return Session()
