@@ -44,3 +44,13 @@ def init_db():
     engine = create_engine(DATABASE_URL, echo=False)
     Base.metadata.create_all(engine)
     return engine
+
+def get_session():
+    """Создает новую сессию"""
+    engine = create_engine('sqlite:///bot_orders.db', echo=False)
+    Session = sessionmaker(bind=engine)
+    return Session()
+
+def get_db():
+    """Для Flask контекста"""
+    return get_session()
