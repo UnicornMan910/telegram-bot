@@ -69,3 +69,75 @@ def get_or_create_user(session, telegram_id, username=None, first_name=None, las
     
     return user
 
+def create_order(session, user_id, bot_type, functionality, target_audience, preferences, budget=100000, partner_id=None):
+    """Создает новый заказ"""
+    user = session.query(User).filter_by(id=user_id).first()
+    
+    # Определяем процент партнера
+    partner_percent = 0
+    if user.referral_id and not session.query(Order).filter_by(user_id=user_id).first():
+        partner_id = user.referral_id
+        partner = session.query(User).filter_by(id=partner_id).first()
+        
+        # Считаем рефералов
+        referral_count = session.query(User).filter_by(referral_id=partner_id).count()
+        
+        # Определяем процент
+        if referral_count >= 3:
+            partner_percent = 20.0
+        else:
+            partner_percent = 10.0
+    
+    order = Order(
+        user_id=user_id,
+        partner_id=partner_id,
+        bot_type=bot_type,
+        functionality=functionality,
+        target_audience=target_audience,
+        preferences=preferences,
+        amount=budget,
+        partner_percent=partner_percent
+    )
+    
+    session.add(order)
+    session.commit()
+    
+    return order
+
+
+def get_user_orders(session, user_id):
+    """Получает все заказы пользователя"""
+    return session.query(Order).filter_by(user_id=user_id).all()
+
+
+def get_all_orders(session):
+    """Получает все заказы"""
+    return session.query(Order).order_by(Order.created_at.desc()).all()
+
+
+def get_partners(session):
+    """Получает всех партнеров"""
+    return session.query(User).filter_by(is_partner=True).all()
+
+
+def update_order_status(session, order_id, status):
+    """Обновляет статус заказа"""
+    order = session.query(Order).filter_by(id=order_id).first()
+    if order:
+        order.status = status
+        session.commit()
+        return True
+    return False
+
+
+def get_partner_stats(session, partner_id):
+    """Статистика партнера"""
+    stats = {
+        'total_referrals': session.query(User).filter_by(referral_id=partner_id).count(),
+        'completed_orders': session.query(Order).filter_by(partner_id=partner_id, status='completed').count(),
+        'total_earnings': 0,
+        'pending_payments': 0
+    }
+    return stats
+
+
