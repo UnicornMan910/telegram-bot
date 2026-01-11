@@ -168,7 +168,7 @@ def delete_order(order_id):
         if order:
             session.delete(order)
             session.commit()
-            return jsonify({'success': True, 'message': 'Заказ удален'})
+            return jsonify({'success': True, 'message': f'Заказ #{order_id} удален'})
         return jsonify({'success': False, 'message': 'Заказ не найден'}), 404
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
