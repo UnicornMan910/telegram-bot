@@ -1,6 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 from sqlalchemy.orm import sessionmaker
-from database import init_db, User, Order, PartnerPayment
+from database import init_db, User, Order
 from config import CURRENCY
 from datetime import datetime
 
@@ -25,9 +25,8 @@ def admin_dashboard():
         new_orders = session.query(Order).filter_by(status='new').count()
         total_partners = session.query(User).filter_by(is_partner=True).count()
 
-        # Выплаты
-        pending_payments = session.query(PartnerPayment).filter_by(paid=False).all()
-        pending_sum = sum(p.amount for p in pending_payments)
+        # ВРЕМЕННО УБРАЛИ ВЫПЛАТЫ
+        pending_sum = 0  # Временное значение
 
         # Последние заказы (5 штук)
         orders = session.query(Order).order_by(Order.created_at.desc()).limit(5).all()
@@ -59,9 +58,10 @@ def admin_dashboard():
         partner_stats = []
         for partner in partners:
             referrals = session.query(User).filter_by(referral_id=partner.id).count()
-            payments = session.query(PartnerPayment).filter_by(partner_id=partner.id).all()
-            pending = sum(p.amount for p in payments if not p.paid)
-            earned = sum(p.amount for p in payments if p.paid)
+            
+            # ВРЕМЕННО УБРАЛИ ВЫПЛАТЫ
+            pending = 0
+            earned = 0
 
             partner_stats.append({
                 'id': partner.id,
@@ -150,34 +150,12 @@ def update_order_status(order_id):
         session.close()
 
 
-@app.route('/api/pay_partner/<int:payment_id>', methods=['POST'])
-def pay_partner(payment_id):
-    session = get_db_session()
-    try:
-        payment = session.query(PartnerPayment).filter_by(id=payment_id).first()
-        if payment:
-            payment.paid = True
-            payment.payment_date = datetime.now()
-
-            # Обновляем заказ
-            order = session.query(Order).filter_by(id=payment.order_id).first()
-            if order:
-                order.partner_paid = True
-
-            session.commit()
-            return jsonify({
-                'success': True,
-                'message': f'Выплачено {payment.amount:.2f}{CURRENCY}'
-            })
-        return jsonify({'success': False}), 404
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-    finally:
-        session.close()
+# ВРЕМЕННО УБРАЛИ ФУНКЦИЮ ВЫПЛАТ
+# @app.route('/api/pay_partner/<int:payment_id>', methods=['POST'])
+# def pay_partner(payment_id):
+#     ... код удален ...
 
 
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Admin panel is running'})
-
-
