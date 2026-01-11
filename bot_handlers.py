@@ -11,7 +11,7 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime
 
-from database import init_db, User, Order, PartnerPayment, get_session
+from database import init_db, User, Order, get_session
 from config import ADMIN_IDS, ADMIN_USERNAME, CURRENCY, REFERRAL_PERCENT, REFERRAL_PERCENT_PREMIUM, \
     MIN_REFERRALS_FOR_PREMIUM
 
@@ -411,4 +411,5 @@ def register_handlers(dp: Dispatcher):
     async def other_messages(message: Message, state: FSMContext):
         current_state = await state.get_state()
         if not current_state:
+
             await message.answer("Используйте кнопки меню:", reply_markup=get_main_keyboard())
