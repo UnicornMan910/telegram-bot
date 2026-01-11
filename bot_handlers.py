@@ -308,17 +308,34 @@ async def process_preferences(message: Message, state: FSMContext):
     await state.update_data(preferences=message.text)
     data = await state.get_data()
 
+    # Сохраняем заказ в базу данных
     session = get_session()
-    user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
-
-    # Создаём заказ
-    order = Order(
-        user_id=user.id,
+    
+    # СОЗДАЕМ ПОЛЬЗОВАТЕЛЯ
+    user = get_or_create_user(
+        session,
+        message.from_user.id,
+        message.from_user.username,
+        message.from_user.first_name,
+        message.from_user.last_name
+    )
+    
+    # ПРОВЕРЯЕМ что пользователь создан
+    if user is None:
+        await message.answer("❌ Ошибка: не удалось создать пользователя. Попробуйте /start")
+        session.close()
+        await state.clear()
+        return
+    
+    # Теперь user точно существует!
+    order = create_order(
+        session,
+        user_id=user.id,  # ← Теперь безопасно!
         bot_type=data['bot_type'],
         functionality=data['functionality'],
         target_audience=data['target_audience'],
         preferences=data['preferences'],
-        amount=data['budget']
+        budget=data.get('budget', 100000)
     )
 
     # Проверяем реферала
@@ -413,6 +430,7 @@ def register_handlers(dp: Dispatcher):
         if not current_state:
 
             await message.answer("Используйте кнопки меню:", reply_markup=get_main_keyboard())
+
 
 
 
