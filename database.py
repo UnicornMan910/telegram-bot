@@ -3,6 +3,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 
+# Определяем DATABASE_URL
+DATABASE_URL = 'sqlite:///bot_orders.db'
+
 Base = declarative_base()
 
 class User(Base):
@@ -69,3 +72,4 @@ def get_session(engine):
     Session = sessionmaker(bind=engine)
 
     return Session()
+
