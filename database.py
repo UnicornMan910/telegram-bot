@@ -45,12 +45,27 @@ def init_db():
     Base.metadata.create_all(engine)
     return engine
 
+# ====== ДОБАВЬ ЭТО В КОНЕЦ ФАЙЛА database.py ======
+
 def get_session():
-    """Создает новую сессию"""
+    """Создает и возвращает новую сессию базы данных"""
     engine = create_engine('sqlite:///bot_orders.db', echo=False)
     Session = sessionmaker(bind=engine)
     return Session()
 
-def get_db():
-    """Для Flask контекста"""
-    return get_session()
+def get_or_create_user(session, telegram_id, username=None, first_name=None, last_name=None, referral_code=None):
+    """Получает или создает пользователя"""
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    
+    if not user:
+        user = User(
+            telegram_id=telegram_id,
+            username=username,
+            first_name=first_name,
+            last_name=last_name
+        )
+        session.add(user)
+        session.commit()
+    
+    return user
+
