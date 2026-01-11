@@ -47,22 +47,6 @@ class Order(Base):
     partner = relationship('User', back_populates='orders_as_partner', foreign_keys=[partner_id])
     payments = relationship('PartnerPayment', back_populates='order', foreign_keys='PartnerPayment.order_id')
 
-
-class PartnerPayment(Base):
-    __tablename__ = 'partner_payments'
-
-    id = Column(Integer, primary_key=True)
-    partner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False)
-    amount = Column(Float, nullable=False)
-    percent = Column(Float, nullable=False)
-    payment_date = Column(DateTime, default=datetime.now)
-    paid = Column(Boolean, default=False)
-
-    partner = relationship('User', back_populates='partner_payments', foreign_keys=[partner_id])
-    order = relationship('Order', back_populates='payments', foreign_keys=[order_id])
-
-
 def init_db():
     engine = create_engine(DATABASE_URL, echo=False)
     Base.metadata.create_all(engine)
@@ -73,5 +57,6 @@ def get_session(engine):
     Session = sessionmaker(bind=engine)
 
     return Session()
+
 
 
