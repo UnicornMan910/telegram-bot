@@ -147,4 +147,13 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logger.info("Приложение остановлено")
     except Exception as e:
+
         logger.error(f"Ошибка запуска: {e}")
+
+import threading
+from server import app
+
+def run_flask():
+    app.run(host="0.0.0.0", port=10000)
+
+threading.Thread(target=run_flask).start()
