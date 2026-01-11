@@ -65,7 +65,7 @@ async def cmd_start(message: Message, state: FSMContext):
     args = message.text.split()
     referral_code = args[1] if len(args) > 1 else None
 
-    session = get_session(engine)
+    session = get_session()
     user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
 
     if not user:
@@ -413,4 +413,5 @@ def register_handlers(dp: Dispatcher):
         if not current_state:
 
             await message.answer("Используйте кнопки меню:", reply_markup=get_main_keyboard())
+
 
