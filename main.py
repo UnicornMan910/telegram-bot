@@ -6,26 +6,27 @@ from threading import Thread
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 from aiohttp import web
 
 from bot_handlers import register_handlers
-from config import BOT_TOKEN, WEBHOOK_URL, WEBAPP_HOST, WEBAPP_PORT, BOT_MODE, IS_PRODUCTION
-from webapp import app as flask_app
+from config import BOT_TOKEN, WEBHOOK_URL, WEBAPP_HOST, WEBAPP_PORT, BOT_MODE
+from server import app as flask_app  # твой Flask /ping
 
-# Настройка логирования
+# ------------------- ЛОГИ -------------------
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
 
-# Глобальные переменные для бота
+# ------------------- BOT -------------------
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
 
+# Установка команд
 async def set_bot_commands():
     commands = [
         BotCommand(command="/start", description="Запустить бота"),
@@ -35,125 +36,77 @@ async def set_bot_commands():
     logger.info("Команды бота установлены")
 
 
+# Запуск Flask в отдельном потоке (для /ping)
 def run_flask():
-    """Запуск Flask приложения"""
     logger.info(f"Запуск Flask на {WEBAPP_HOST}:{WEBAPP_PORT}")
     flask_app.run(
         host=WEBAPP_HOST,
         port=WEBAPP_PORT,
-        debug=False,  # На продакшене debug должен быть False
+        debug=False,
         use_reloader=False
     )
 
 
-async def setup_webhook():
-    """Настройка вебхука для бота"""
-    webhook_info = await bot.get_webhook_info()
-    if webhook_info.url != WEBHOOK_URL:
-        await bot.set_webhook(
-            url=WEBHOOK_URL,
-            drop_pending_updates=True
-        )
-        logger.info(f"Вебхук установлен: {WEBHOOK_URL}")
-
-
-async def on_startup():
-    """Действия при запуске приложения"""
-    logger.info("Запуск приложения...")
-
-    # Устанавливаем команды бота
-    await set_bot_commands()
-
-    if BOT_MODE == "webhook" and WEBHOOK_URL:
-        await setup_webhook()
-
-
-async def on_shutdown():
-    """Действия при остановке приложения"""
-    logger.info("Остановка приложения...")
-    if BOT_MODE == "webhook":
-        await bot.delete_webhook()
-        logger.info("Вебхук удален")
-
-
-async def webhook_app():
-    """Создание aiohttp приложения для вебхуков"""
-    # Регистрируем обработчики бота
+# Startup webhook
+async def on_startup(app: web.Application):
+    logger.info("Запуск бота...")
     register_handlers(dp)
+    await set_bot_commands()
+    if WEBHOOK_URL:
+        await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
+        logger.info(f"Webhook установлен: {WEBHOOK_URL}")
 
-    # Создаем aiohttp приложение
+
+# Shutdown webhook
+async def on_shutdown(app: web.Application):
+    logger.info("Остановка бота...")
+    await bot.delete_webhook()
+    logger.info("Webhook удален")
+
+
+# aiohttp приложение для webhook
+async def webhook_app():
     app = web.Application()
+    app.on_startup.append(on_startup)
+    app.on_shutdown.append(on_shutdown)
 
-    # Добавляем обработчик вебхука
-    webhook_handler = SimpleRequestHandler(
-        dispatcher=dp,
-        bot=bot,
-    )
-    webhook_handler.register(app, path="/webhook")
+    # Регистрируем обработчик webhook
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
 
-    # Настройка событий запуска/остановки
-    app.on_startup.append(lambda _: on_startup())
-    app.on_shutdown.append(lambda _: on_shutdown())
+    # Добавляем ping на aiohttp (дополнительно к Flask)
+    async def ping(request):
+        return web.Response(text="OK")
+    app.router.add_get("/ping", ping)
 
     return app
 
 
-async def polling_mode():
-    """Режим polling для локальной разработки"""
-    logger.info("Запуск в режиме polling...")
-    register_handlers(dp)
-    await on_startup()
-    await dp.start_polling(bot)
-
-
 async def main():
-    """Основная функция запуска"""
-    logger.info(f"Режим работы: {BOT_MODE}")
-    logger.info(f"Flask порт: {WEBAPP_PORT}")
+    logger.info(f"BOT_MODE: {BOT_MODE}")
+    logger.info(f"WEBAPP_HOST: {WEBAPP_HOST}, WEBAPP_PORT: {WEBAPP_PORT}")
 
-    if BOT_MODE == "webhook":
-        # Запускаем Flask в отдельном потоке
-        flask_thread = Thread(target=run_flask, daemon=True)
-        flask_thread.start()
+    # Flask для /ping в отдельном потоке
+    Thread(target=run_flask, daemon=True).start()
 
-        # Создаем и запускаем aiohttp приложение для вебхуков
-        app = await webhook_app()
+    # aiohttp для webhook
+    app = await webhook_app()
+    runner = web.AppRunner(app)
+    await runner.setup()
 
-        # Запускаем aiohttp сервер
-        runner = web.AppRunner(app)
-        await runner.setup()
+    # Render любит один порт, берем WEBAPP_PORT
+    site = web.TCPSite(runner, WEBAPP_HOST, WEBAPP_PORT)
+    await site.start()
 
-        # Используем порт 8000 для вебхуков (Flask будет на WEBAPP_PORT)
-        site = web.TCPSite(runner, '0.0.0.0', 8000)
-        await site.start()
+    logger.info(f"AIOHTTP webhook сервер запущен на {WEBAPP_HOST}:{WEBAPP_PORT}")
 
-        logger.info(f"Сервер вебхуков запущен на порту 8000")
-        logger.info(f"Admin панель доступна на порту {WEBAPP_PORT}")
-
-        # Бесконечное ожидание
-        await asyncio.Event().wait()
-
-    else:
-        # Polling режим - запускаем Flask и бота
-        flask_thread = Thread(target=run_flask, daemon=True)
-        flask_thread.start()
-
-        await polling_mode()
+    # Держим процесс живым
+    await asyncio.Event().wait()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Приложение остановлено")
+        logger.info("Приложение остановлено вручную")
     except Exception as e:
-
         logger.error(f"Ошибка запуска: {e}")
-
-import threading
-from server import app
-
-def run_flask():
-    app.run(host="0.0.0.0", port=10000)
-
-threading.Thread(target=run_flask).start()
