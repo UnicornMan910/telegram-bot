@@ -1,19 +1,45 @@
-async def main():
-    logger.info(f"BOT_MODE: {BOT_MODE}")
-    logger.info(f"WEBAPP_HOST: {WEBAPP_HOST}, WEBAPP_PORT: {WEBAPP_PORT}")
+import asyncio
+import logging
+import os
 
-    if BOT_MODE != "webhook":
-        # Flask нужен ТОЛЬКО не в webhook режиме
-        Thread(target=run_flask, daemon=True).start()
+from flask import Flask, request
+from aiogram import Bot, Dispatcher
+from aiogram.types import Update
 
-    # aiohttp для webhook
-    app = await webhook_app()
-    runner = web.AppRunner(app)
-    await runner.setup()
+from config import BOT_TOKEN, WEBHOOK_URL
 
-    site = web.TCPSite(runner, WEBAPP_HOST, WEBAPP_PORT)
-    await site.start()
+logging.basicConfig(level=logging.INFO)
 
-    logger.info(f"AIOHTTP сервер запущен на {WEBAPP_HOST}:{WEBAPP_PORT}")
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
 
-    await asyncio.Event().wait()
+# ===== Flask =====
+app = Flask(__name__)
+
+@app.route("/ping", methods=["GET", "HEAD"])
+def ping():
+    return "OK", 200
+
+
+@app.route("/webhook", methods=["POST"])
+def telegram_webhook():
+    update = Update.model_validate(request.json)
+    asyncio.get_event_loop().create_task(dp.feed_update(bot, update))
+    return "OK", 200
+
+
+async def on_startup():
+    await bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+    logging.info("Webhook установлен")
+
+
+def run():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(on_startup())
+
+    port = int(os.environ.get("PORT", 3000))
+    app.run(host="0.0.0.0", port=port)
+
+
+if __name__ == "__main__":
+    run()
