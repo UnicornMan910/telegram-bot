@@ -1,15 +1,9 @@
 FROM python:3.11-slim
 
 WORKDIR /app
-
-# Копируем зависимости
 COPY requirements.txt .
-
-# Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Копируем весь проект
 COPY . .
 
-# Запускаем бота
-CMD ["python", "main.py"]
+# Бесконечный цикл с рестартом
+CMD ["bash", "-c", "while true; do echo 'Starting bot...'; python main.py; echo 'Bot crashed, restarting in 5 seconds...'; sleep 5; done"]
